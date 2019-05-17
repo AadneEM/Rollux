@@ -13,5 +13,5 @@ Rollux is a simple dice rolling bot for discord
     "token": "{your token}"
 }
 ```
-3. Install node.js and run the following command: `npm install`
-4. Run it with node.js
+3. Install node.js and npm, then run the following command: `npm install`
+4. Run it with `node bot.js`
