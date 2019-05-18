@@ -15,3 +15,22 @@ Rollux is a simple dice rolling bot for discord
 ```
 3. Install node.js and npm, then run the following command: `npm install`
 4. Run it with `node bot.js`
+
+# Running with docker
+
+1. Build docker image
+
+2. Mount `/data` directory in container with your auth.json file
+
+
+## Example docker-compose file:
+
+```
+version: '2'
+
+services:
+  rollux:
+    image: 'rollux'
+    volumes:
+      - ./data:/data
+```
