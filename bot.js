@@ -32,13 +32,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 case 'hi':
                     sendMessage(channelID, 'Hello, World!')
                 case 'roll':
-                    if (/([+\-*/]?\d{0,}d\d{1,})([+\-*/]\d{1,}){0,}/gi.test(message.substring(6).replace(/\s/g, ''))) {
-                        sendMessage(channelID, diceRoller.roll(message.substring(6)))
+                    if (/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi.test(message.substring(6).replace(/\s/g, ''))) {
+                        sendMessage(
+                            channelID,
+                            message.substring(6) + ': ' + diceRoller.roll(message.substring(6))
+                        )
                     } else {
                         sendMessage(channelID, "I don't recognize this: \""
                             + message
                                 .substring(6)
-                                .replace(/([+\-*/]?\d{0,}d\d{1,})([+\-*/]\d{1,}){0,}/gi, "")
+                                .replace(/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi, "")
                                 .toString()
                             + "\"");
                     }
@@ -58,12 +61,4 @@ function sendMessage(client, message) {
         to: client,
         message: message
     })
-}
-
-function roll(dice) {
-    return parseInt((Math.random() * dice) + 1)
-}
-
-function getSum(total, num) {
-    return total + num
 }
