@@ -18,10 +18,10 @@ Rollux is a simple dice rolling bot for discord
 
 # Running with docker
 
-1. Build docker image
+1. Build docker image with a tag
+   Example: `docker build -t rollux .`
 
 2. Mount `/data` directory in container with your auth.json file
-
 
 ## Example docker-compose file:
 
