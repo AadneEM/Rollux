@@ -45,6 +45,6 @@ version: '2'
 services:
   rollux:
     image: 'rollux'
-	environment:
-		- DISCORD_TOKEN={your token}
+    environment:
+      - DISCORD_TOKEN={your token}
 ```
