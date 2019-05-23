@@ -43,7 +43,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 
             switch (cmd) {
                 case 'hi':
-                sendMessage(channelID, 'Hello, World!');
+                    sendMessage(channelID, 'Hello, World!');
+                    break;
                 case 'roll':
                     if (/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi.test(message.substring(6).replace(/\s/g, ''))) {
                         sendMessage(
