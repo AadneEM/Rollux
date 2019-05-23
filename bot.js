@@ -3,13 +3,24 @@ var logger = require('winston');
 var fs = require('fs');
 var diceRoller = require('./diceRolling.js');
 
-var auth = JSON.parse(fs.readFileSync('./auth.json', 'utf8'));
 
 logger.remove(logger.transports.Console);
 logger.add(new logger.transports.Console, {
     colorize: true
 });
 logger.level = 'debug';
+
+const get_auth = () => {
+    if (process.env.DISCORD_TOKEN != undefined) {
+	logger.info('using auth from environment variable');
+	return { token: process.env.DISCORD_TOKEN };
+    } else {
+	logger.info('using auth from auth.json file');
+	return JSON.parse(fs.readFileSync('./auth.json', 'utf8'));
+    }
+};
+
+var auth = get_auth();
 
 var bot = new Discord.Client({
     token: auth.token,
