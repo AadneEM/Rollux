@@ -1,14 +1,18 @@
 var Discord = require('discord.io');
-var logger = require('winston');
+var winston = require('winston');
 var fs = require('fs');
 var diceRoller = require('./diceRolling.js');
 
-
-logger.remove(logger.transports.Console);
-logger.add(new logger.transports.Console, {
-    colorize: true
+const logger = winston.createLogger({
+    level: 'debug',
+    format: winston.format.json(),
+    defaultMeta: { service: 'user-service' },
+    transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({ filename: 'error.log', level: 'error' }),
+        new winston.transports.File({ filename: 'verbose.log', level: 'verbose' }),
+    ]
 });
-logger.level = 'debug';
 
 const get_auth = () => {
     if (process.env.DISCORD_TOKEN != undefined) {
@@ -21,7 +25,6 @@ const get_auth = () => {
 };
 
 var auth = get_auth();
-
 var bot = new Discord.Client({
     token: auth.token,
     autorun: true
@@ -29,8 +32,7 @@ var bot = new Discord.Client({
 
 bot.on('ready', function (evt) {
     logger.info('Connected');
-    logger.info('Logged in as: ');
-    logger.info(bot.username + ' - (' + bot.id + ')');
+    logger.info('Logged in as: ' + bot.username + ' - (' + bot.id + ')');
 });
 
 bot.on('message', function (user, userID, channelID, message, evt) {
@@ -46,10 +48,18 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     sendMessage(channelID, 'Hello, World!');
                     break;
                 case 'roll':
-                    if (/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi.test(message.substring(6).replace(/\s/g, ''))) {
+                    if (message.length < 7) {
                         sendMessage(
                             channelID,
-                            message.substring(6) + ': ' + diceRoller.roll(message.substring(6))
+                            'Can\'t roll nothing'
+                        )
+                        break;
+                    }
+                    if (/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi.test(message.substring(6).replace(/\s/g, ''))) {
+                        var res = (message.substring(6) + ': ' + diceRoller.roll(message.substring(6))).replace('*', '\\*')
+                        sendMessage(
+                            channelID,
+                            res
                         );
                     } else {
                         sendMessage(channelID, "I don't recognize this: \""
@@ -61,14 +71,21 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     }
                     break;
             }
-        } catch (error) {
-            console.log(error);
+        } catch (e) {
+            error(e, channelID);
         }
     }
 });
 
+function error(error, channelID){
+    var res = "Sorry, something went wrong.";
+
+    sendMessage(channelID, res);
+    logger.error(error)
+}
+
 function sendMessage(client, message) {
-    if (message.length > 2500) {
+    if (message.length > 2000) {
         message = 'Response was to long. Sorry';
     }
     bot.sendMessage({

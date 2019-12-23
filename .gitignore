@@ -1,2 +1,4 @@
 node_modules/
 auth.json
+error.log
+verbose.log
