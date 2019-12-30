@@ -16,11 +16,11 @@ const logger = winston.createLogger({
 
 const get_auth = () => {
     if (process.env.DISCORD_TOKEN != undefined) {
-	logger.info('using auth from environment variable');
-	return { token: process.env.DISCORD_TOKEN };
+        logger.info('using auth from environment variable');
+        return { token: process.env.DISCORD_TOKEN };
     } else {
-	logger.info('using auth from auth.json file');
-	return JSON.parse(fs.readFileSync('./auth.json', 'utf8'));
+        logger.info('using auth from auth.json file');
+        return JSON.parse(fs.readFileSync('./auth.json', 'utf8'));
     }
 };
 
@@ -33,6 +33,11 @@ var bot = new Discord.Client({
 bot.on('ready', function (evt) {
     logger.info('Connected');
     logger.info('Logged in as: ' + bot.username + ' - (' + bot.id + ')');
+    bot.setPresence({
+        game: {
+            name: 'with dice'
+        }
+    });
 });
 
 bot.on('message', function (user, userID, channelID, message, evt) {
@@ -77,7 +82,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     }
 });
 
-function error(error, channelID){
+function error(error, channelID) {
     var res = "Sorry, something went wrong.";
 
     sendMessage(channelID, res);
