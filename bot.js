@@ -1,7 +1,9 @@
-var Discord = require('discord.io');
+var Discord = require('discord.js');
 var winston = require('winston');
 var fs = require('fs');
 var diceRoller = require('./diceRolling.js');
+
+const client = new Discord.Client();
 
 const logger = winston.createLogger({
     level: 'debug',
@@ -24,77 +26,52 @@ const get_auth = () => {
     }
 };
 
-var auth = get_auth();
-var bot = new Discord.Client({
-    token: auth.token,
-    autorun: true
-});
-
-bot.on('ready', function (evt) {
+client.on('ready', () => {
     logger.info('Connected');
-    logger.info('Logged in as: ' + bot.username + ' - (' + bot.id + ')');
-    bot.setPresence({
-        game: {
-            name: 'with dice'
-        }
-    });
+    logger.info(`Logged in as: ${client.user.tag}`);
+    client.user.setPresence({ activity: { name: 'with dice | /roll' }})
+        .then(logger.info)
+        .catch(logger.error);
 });
 
-bot.on('message', function (user, userID, channelID, message, evt) {
-    if (message.substring(0, 1) == '/') {
-        try {
-            var args = message.substring(1).split(' ');
-            var cmd = args[0];
+client.on('message', msg => {
+    try {
+        if (msg.content.substring(0, 1) !== '/') return;
 
-            console.log(message);
+        var args = msg.content.substring(1).split(' ');
+        var cmd = args[0];
 
-            switch (cmd) {
-                case 'hi':
-                    sendMessage(channelID, 'Hello, World!');
+        switch (cmd) {
+            case 'hi':
+                sendMessage(channelID, 'Hello, World!');
+                break;
+            case 'roll':
+                if (msg.content.length < 7) {
+                    sendMessage(
+                        channelID,
+                        'Can\'t roll nothing'
+                    )
                     break;
-                case 'roll':
-                    if (message.length < 7) {
-                        sendMessage(
-                            channelID,
-                            'Can\'t roll nothing'
-                        )
-                        break;
-                    }
-                    if (/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi.test(message.substring(6).replace(/\s/g, ''))) {
-                        var res = (message.substring(6) + ': ' + diceRoller.roll(message.substring(6))).replace('*', '\\*')
-                        sendMessage(
-                            channelID,
-                            res
-                        );
-                    } else {
-                        sendMessage(channelID, "I don't recognize this: \""
-                            + message
-                                .substring(6)
-                                .replace(/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi, "")
-                                .toString()
-                            + "\"");
-                    }
-                    break;
-            }
-        } catch (e) {
-            error(e, channelID);
+                }
+                if (/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi.test(msg.content.substring(6).replace(/\s/g, ''))) {
+                    var res = (msg.content.substring(6) + ': ' + diceRoller.roll(msg.content.substring(6))).replace('*', '\\*')
+                    msg.reply(res);
+                } else {
+                    var res =  "I don't recognize this: \""
+                        + msg.content
+                            .substring(6)
+                            .replace(/([+\-]?\d{0,}d\d{1,})([+\-*x/]\d{1,}){0,}/gi, "")
+                            .toString()
+                        + "\"";
+                    msg.reply(res);
+                }
+                break;
         }
+    } catch (er) {
+        msg.reply('Sorry, something went wrong.')
+        logger.error(er);
     }
 });
 
-function error(error, channelID) {
-    var res = "Sorry, something went wrong.";
-
-    sendMessage(channelID, res);
-    logger.error(error)
-}
-
-function sendMessage(client, message) {
-    if (message.length > 2000) {
-        message = 'Response was to long. Sorry';
-    }
-    bot.sendMessage({
-        to: client,
-        message: message
-    });
-}
+var auth = get_auth();
+client.login(auth.token)
