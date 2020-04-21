@@ -31,7 +31,7 @@ client.on('ready', () => {
     logger.info(`Logged in as: ${client.user.tag}`);
     client.user.setPresence({ activity: { name: 'with dice | /roll' }})
         .then(logger.info)
-        .catch(logger.error);
+        .catch(er => logger.error(`Encountered error: ${JSON.stringify(er)}`));
 });
 
 client.on('message', msg => {
@@ -69,9 +69,17 @@ client.on('message', msg => {
         }
     } catch (er) {
         msg.reply('Sorry, something went wrong.')
-        logger.error(er);
+        logger.error(`Encountered error: ${JSON.stringify(er)}`);
     }
 });
 
+client.on('warn', warn => {
+    logger.warn(`Warning: ${JSON.stringify(er)}`);
+});
+
+client.on('error', er => {
+    logger.error(`Error event triggered: ${JSON.stringify(er)}`);
+});
+
 var auth = get_auth();
-client.login(auth.token)
+client.login(auth.token);
