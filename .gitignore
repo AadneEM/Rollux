@@ -3,3 +3,7 @@ auth.json
 error.log
 verbose.log
 .vscode/
+
+#Added by cargo
+
+/target
