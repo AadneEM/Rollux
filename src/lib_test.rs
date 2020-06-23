@@ -2,27 +2,35 @@ use super::*;
 
 #[test]
 fn test_roll_dice() {
-  let mut results = parse_dice_segments("2d6");
+  let mut results = parse_dice_segments("2d6").expect("Failed to unpack results");
   
-  assert_eq!(results.len(), 1);
-  assert_eq!(results[0]["count"], *"2");
-  assert_eq!(results[0]["size"], *"6");
+  assert_eq!(results, vec![ Segment::DiceRoll{ op: '+', count: 2, size: 6, filter: None } ]);
   
-  results = parse_dice_segments("2d6 + 1d20");
+  results = parse_dice_segments("2d6 + 1d20").expect("Failed to unpack results");
   
-  assert_eq!(results.len(), 2);
-  assert_eq!(results[1].name("op").map(|i| i.as_str()), Some("+"));
-  assert_eq!(results[1].name("count").map(|i| i.as_str()), Some("1"));
-  assert_eq!(results[1]["size"], *"20");
+  assert_eq!(results, vec![ 
+    Segment::DiceRoll{ op: '+', count: 2, size: 6, filter: None },
+    Segment::DiceRoll{ op: '+', count: 1, size: 20, filter: None },
+  ]);
+  
+  results = parse_dice_segments("4d6d1").expect("Failed to unpack results");
+  
+  assert_eq!(results, vec![ 
+    Segment::DiceRoll{ op: '+', count: 4, size: 6, filter: Some(DiceFilter::DropLowest(1)) },
+  ]);
+    
+  results = parse_dice_segments("3d8+8").expect("Failed to unpack results");
 
-  results = parse_dice_segments("4d6d1");
+  assert_eq!(results, vec![ 
+    Segment::DiceRoll{ op: '+', count: 3, size: 8, filter: None },
+    Segment::Modifier{ op: '+', amount: 8 },
+  ]);
   
-  assert_eq!(results.len(), 1);
-  assert_eq!(results[0].name("drop").map(|i| i.as_str()), Some("1"));
-
-  results = parse_dice_segments("3d8+8");
-
-  assert_eq!(results.len(), 2);
-  assert_eq!(results[1].name("op").map(|i| i.as_str()), Some("+"));
-  assert_eq!(results[1].name("mod").map(|i| i.as_str()), Some("8"));
+  results = parse_dice_segments("3d8kl3 - 2d1dh1 / 2").expect("Failed to unpack results");
+  
+  assert_eq!(results, vec![ 
+    Segment::DiceRoll{ op: '+', count: 3, size: 8, filter: Some(DiceFilter::KeepLowest(3)) },
+    Segment::DiceRoll{ op: '-', count: 2, size: 1, filter: Some(DiceFilter::DropHighest(1)) },
+    Segment::Modifier{ op: '/', amount: 2 },
+  ]);
 }
