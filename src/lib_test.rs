@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn test_roll_dice() {
+fn test_parse_dice_segments() {
   let mut results = parse_dice_segments("2d6").expect("Failed to unpack results");
   
   assert_eq!(results, vec![ Segment::DiceRoll{ op: '+', count: 2, size: 6, filter: None } ]);
@@ -32,5 +32,29 @@ fn test_roll_dice() {
     Segment::DiceRoll{ op: '+', count: 3, size: 8, filter: Some(DiceFilter::KeepLowest(3)) },
     Segment::DiceRoll{ op: '-', count: 2, size: 1, filter: Some(DiceFilter::DropHighest(1)) },
     Segment::Modifier{ op: '/', amount: 2 },
+  ]);
+}
+
+#[test]
+fn test_group_modifiers_to_dicerolls() {
+  let mut segments = parse_dice_segments("2d20 / 2 + 2 + 4d6 * 2 * 2").expect("Failed to unpack results");
+
+  let mut results = group_modifiers_to_dicerolls(&segments);
+
+  assert_eq!(results, vec![
+    RollWithModifier{
+      diceroll: Segment::DiceRoll{ op: '+', count: 2, size: 20, filter: None },
+      modifiers: vec![
+        Segment::Modifier{ op: '/', amount: 2 },
+        Segment::Modifier{ op: '+', amount: 2 },
+      ]
+    },
+    RollWithModifier{
+      diceroll: Segment::DiceRoll{ op: '+', count: 4, size: 6, filter: None },
+      modifiers: vec![
+        Segment::Modifier{ op: '*', amount: 2 },
+        Segment::Modifier{ op: '*', amount: 2 },
+      ]
+    },
   ]);
 }

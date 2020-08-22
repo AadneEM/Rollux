@@ -1,16 +1,17 @@
 use regex::Regex;
 use thiserror::Error;
 use anyhow::Result;
+use rand::Rng;
 
 #[cfg(test)]
 mod lib_test;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum DiceFilter {
   DropLowest(i32), DropHighest(i32), KeepLowest(i32), KeepHighest(i32),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Segment {
   DiceRoll{
     op: char,
@@ -86,4 +87,49 @@ fn parse_dice_segments(cmd: &str) -> Result<Vec<Segment>> {
   "#).expect("Failed to compile regex");
 
   regex.captures_iter(cmd).map(construct_dice_segment).collect()
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct RollWithModifier {
+  diceroll: Segment,
+  modifiers: Vec<Segment>
+}
+
+fn group_modifiers_to_dicerolls(segments: &[Segment]) -> Vec<RollWithModifier> {
+  let mut results = Vec::new();
+
+  let mut current_diceroll : Option<Segment> = None;
+  let mut current_modifiers = Vec::new();
+
+  for segment in segments {
+    if let Segment::DiceRoll {..} = segment {
+      if let Option::Some(current) = current_diceroll {
+        let with_modifier = RollWithModifier {
+          diceroll: current.clone(),
+          modifiers: current_modifiers.clone(),
+        };
+
+        current_modifiers.clear();
+
+        results.push(with_modifier);
+      }
+      current_diceroll = Some(segment.clone());
+    }
+    else if let Segment::Modifier { .. } = segment {
+      current_modifiers.push(segment.clone());
+    }
+  }
+
+  if let Option::Some(current) = current_diceroll {
+    let with_modifier = RollWithModifier {
+      diceroll: current.clone(),
+      modifiers: current_modifiers.clone(),
+    };
+
+    current_modifiers.clear();
+
+    results.push(with_modifier);
+  }
+
+  results
 }
