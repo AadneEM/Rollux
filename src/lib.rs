@@ -2,13 +2,14 @@ use regex::Regex;
 use thiserror::Error;
 use anyhow::Result;
 use rand::Rng;
+use rand::seq::SliceRandom;
 
 #[cfg(test)]
 mod lib_test;
 
 #[derive(Debug, PartialEq, Clone)]
 enum DiceFilter {
-  DropLowest(i32), DropHighest(i32), KeepLowest(i32), KeepHighest(i32),
+  DropLowest(usize), DropHighest(usize), KeepLowest(usize), KeepHighest(usize),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -27,8 +28,6 @@ enum Segment {
 
 #[derive(Error, Debug, PartialEq)]
 enum SegmentError {
-  #[error("Invalid segment")]
-  InvalidSegment,
   #[error("No dice size was given")]
   SizeIsMissing,
   #[error("Invalid filter operator: {op}")]
@@ -37,7 +36,7 @@ enum SegmentError {
   IncompleteFilter,
 }
 
-fn construct_dice_filter(op: &str, amount: i32) -> Result<DiceFilter> {
+fn construct_dice_filter(op: &str, amount: usize) -> Result<DiceFilter> {
   match op.to_lowercase().as_str() {
     "d" | "dl" => Ok(DiceFilter::DropLowest(amount)),
     "dh" => Ok(DiceFilter::DropHighest(amount)),
@@ -47,7 +46,7 @@ fn construct_dice_filter(op: &str, amount: i32) -> Result<DiceFilter> {
   }
 }
 
-fn construct_dice_segment(cap: regex::Captures) -> Result<Segment> {
+fn construct_dice_segment(cap: regex::Captures<'_>) -> Result<Segment> {
   let op = cap.name("op").and_then(|i| i.as_str().chars().next()).unwrap_or('+');
   let modifier = cap.name("mod").map(|i| i.as_str().parse()).transpose()?;
 
@@ -57,10 +56,12 @@ fn construct_dice_segment(cap: regex::Captures) -> Result<Segment> {
 
   let count:i32 = cap.name("count").map(|i| i.as_str().parse()).transpose()?.unwrap_or(1);
   let size:i32 = cap.name("size").map(|i| i.as_str().parse()).transpose()?.ok_or(SegmentError::SizeIsMissing)?;
-  let filter_amount = cap.name("filter").map(|i| i.as_str().parse::<i32>()).transpose()?;
+  let filter_amount = cap.name("filter").map(|i| i.as_str().parse::<usize>()).transpose()?;
   let filter_op = cap.name("filter_op").map(|op| op.as_str());
+  /*
   dbg!(filter_amount);
   dbg!(filter_op);
+  */
   if filter_amount.is_some() != filter_op.is_some() {
     Err(SegmentError::IncompleteFilter)?;
   }
@@ -91,7 +92,7 @@ fn parse_dice_segments(cmd: &str) -> Result<Vec<Segment>> {
 
 #[derive(Debug, PartialEq, Clone)]
 struct RollWithModifier {
-  diceroll: Segment,
+  diceroll: Option<Segment>,
   modifiers: Vec<Segment>
 }
 
@@ -103,9 +104,9 @@ fn group_modifiers_to_dicerolls(segments: &[Segment]) -> Vec<RollWithModifier> {
 
   for segment in segments {
     if let Segment::DiceRoll {..} = segment {
-      if let Option::Some(current) = current_diceroll {
+      if current_diceroll.is_some() || current_modifiers.len() > 0 {
         let with_modifier = RollWithModifier {
-          diceroll: current.clone(),
+          diceroll: current_diceroll.clone(),
           modifiers: current_modifiers.clone(),
         };
 
@@ -113,6 +114,7 @@ fn group_modifiers_to_dicerolls(segments: &[Segment]) -> Vec<RollWithModifier> {
 
         results.push(with_modifier);
       }
+
       current_diceroll = Some(segment.clone());
     }
     else if let Segment::Modifier { .. } = segment {
@@ -120,9 +122,9 @@ fn group_modifiers_to_dicerolls(segments: &[Segment]) -> Vec<RollWithModifier> {
     }
   }
 
-  if let Option::Some(current) = current_diceroll {
+  if current_diceroll.is_some() || current_modifiers.len() > 0 {
     let with_modifier = RollWithModifier {
-      diceroll: current.clone(),
+      diceroll: current_diceroll.clone(),
       modifiers: current_modifiers.clone(),
     };
 
@@ -132,4 +134,82 @@ fn group_modifiers_to_dicerolls(segments: &[Segment]) -> Vec<RollWithModifier> {
   }
 
   results
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct Roll {
+  operator: char,
+  results: Vec<i32>,
+  total: i32,
+}
+
+#[derive(Error, Debug, PartialEq, Clone)]
+enum RollError {
+  #[error("Roll failed. Empty RollWithModifier")]
+  EmptyRollWithModifier,
+  #[error("Roll failed. Invalid filter operator")]
+  InvalidFilterOperator,
+}
+
+fn roll_dice_segments<R: Rng>(rwms: &[RollWithModifier], mut rng: R) -> Result<Vec<Roll>, RollError> {
+  rwms.iter()
+    .map(|rwm| {
+      let mut results = Vec::new();
+      let mut total = 0;
+      
+      // store first operator
+      let operator = if let Some(Segment::DiceRoll{op, ..}) = rwm.diceroll {
+        op
+      } else if let Some(Segment::Modifier{op, ..}) = rwm.modifiers.iter().next() {
+        *op
+      } else {
+        return Err(RollError::EmptyRollWithModifier);
+      };
+
+      if let Some(Segment::DiceRoll{count, size, filter, ..}) = &rwm.diceroll {
+        results = (0..*count).map(|_| {
+          rng.gen_range(1, size + 1)
+        }).collect();
+
+        results.sort();
+        if let Some(filter) = filter {
+          match filter {
+            DiceFilter::DropLowest(n) => {
+              results = results.into_iter().skip(*n).collect();
+            },
+            DiceFilter::DropHighest(n) => {
+              let len = results.len();
+              results = results.into_iter().take(len - n).collect();
+            },
+            DiceFilter::KeepLowest(n) => {
+              results = results.into_iter().take(*n).collect();
+            },
+            DiceFilter::KeepHighest(n) => {
+              let len = results.len();
+              results = results.into_iter().skip(len - n).collect();
+            },
+          }
+        }
+        results.shuffle(&mut rng);
+        
+        total = results.iter().sum();
+      }
+
+      for segment in &rwm.modifiers {
+        if let Segment::Modifier{op,amount} = segment {
+          match op {
+            '+' => { total += amount; },
+            '-' => { total -= amount; },
+            '/' => { total /= amount; },
+            '*' => { total *= amount; },
+            _ => {
+              return Err(RollError::InvalidFilterOperator);
+            },
+          }
+        }
+      }
+
+      Ok(Roll{operator, results, total})
+    })
+    .collect::<Result<Vec<_>,_>>()
 }
