@@ -111,3 +111,35 @@ fn test_roll_dice_segments() {
     Roll{operator: '*', results: vec![6], total: 4},
   ]));
 }
+
+#[test]
+fn test_roll_dice() {
+
+  let input = "4d6d2 + 2 - 1d4";
+
+  let mut rng = StdRng::seed_from_u64(2);
+
+  let result = roll_dice(input, &mut rng);
+
+  let expected = (8i32, vec![
+    (Roll {
+      operator: '+',
+      results: vec![5, 5],
+      total: 12
+    }, 
+    vec![Segment::Modifier { op: '+', amount: 2 }]),
+
+    (Roll {
+      operator: '-',
+      results: vec![4],
+      total: 4
+    }, 
+    vec![])]);
+
+  if let Ok(result) = result {
+    assert_eq!(result, expected);
+  } else {
+    panic!("Expected Ok, was: {:?}", result);
+  }
+
+}

@@ -147,8 +147,10 @@ struct Roll {
 enum RollError {
   #[error("Roll failed. Empty RollWithModifier")]
   EmptyRollWithModifier,
-  #[error("Roll failed. Invalid filter operator")]
-  InvalidFilterOperator,
+  #[error("Roll failed. Invalid filter operator '{0}'")]
+  InvalidFilterOperator(char),
+  #[error("Roll failed. Invalid segment operator '{0}'")]
+  InvalidOperator(char),
 }
 
 fn roll_dice_segments<R: Rng>(rwms: &[RollWithModifier], mut rng: R) -> Result<Vec<Roll>, RollError> {
@@ -203,7 +205,7 @@ fn roll_dice_segments<R: Rng>(rwms: &[RollWithModifier], mut rng: R) -> Result<V
             '/' => { total /= amount; },
             '*' => { total *= amount; },
             _ => {
-              return Err(RollError::InvalidFilterOperator);
+              return Err(RollError::InvalidFilterOperator(*op));
             },
           }
         }
@@ -212,4 +214,25 @@ fn roll_dice_segments<R: Rng>(rwms: &[RollWithModifier], mut rng: R) -> Result<V
       Ok(Roll{operator, results, total})
     })
     .collect::<Result<Vec<_>,_>>()
+}
+
+fn roll_dice<R : Rng>(s: &str, mut rng: R) -> Result<(i32, Vec<(Roll, Vec<Segment>)>)> {
+  let segments = parse_dice_segments(s)?;
+
+  let groups = group_modifiers_to_dicerolls(&segments);
+
+  let rolls = roll_dice_segments(&groups, &mut rng)?;
+
+  let total = rolls.iter().try_fold(0, |acc,roll| match roll.operator {
+    '+' => Ok(acc + roll.total),
+    '-' => Ok(acc - roll.total),
+    '*' => Ok(acc * roll.total),
+    '/' => Ok(acc / roll.total),
+    _ => Err(RollError::InvalidOperator(roll.operator))
+  })?;
+
+  let rolls_with_modifiers = rolls.into_iter()
+    .zip(groups.into_iter().map(|grp| grp.modifiers)).collect();
+
+  Ok((total, rolls_with_modifiers))
 }
