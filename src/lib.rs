@@ -8,7 +8,7 @@ use thiserror::Error;
 mod lib_test;
 
 #[derive(Debug, PartialEq, Clone)]
-enum DiceFilter {
+pub enum DiceFilter {
     DropLowest(usize),
     DropHighest(usize),
     KeepLowest(usize),
@@ -16,7 +16,7 @@ enum DiceFilter {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Segment {
+pub enum Segment {
     DiceRoll {
         op: char,
         count: i32,
@@ -166,10 +166,10 @@ fn group_modifiers_to_dicerolls(segments: &[Segment]) -> Vec<RollWithModifier> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct Roll {
-    operator: char,
-    results: Vec<i32>,
-    total: i32,
+pub struct Roll {
+    pub operator: char,
+    pub results: Vec<i32>,
+    pub total: i32,
 }
 
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -265,12 +265,12 @@ fn roll_dice_segments<R: Rng>(
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct RollSet {
-    total: i32,
-    rolls: Vec<(Roll, Vec<Segment>)>,
+pub struct RollSet {
+    pub total: i32,
+    pub rolls: Vec<(Roll, Vec<Segment>)>,
 }
 
-fn roll_dice<R: Rng>(s: &str, mut rng: R) -> Result<RollSet> {
+pub fn roll_dice<R: Rng>(s: &str, mut rng: R) -> Result<RollSet> {
     let segments = parse_dice_segments(s)?;
 
     let groups = group_modifiers_to_dicerolls(&segments);
