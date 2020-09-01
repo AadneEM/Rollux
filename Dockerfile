@@ -1,14 +1,17 @@
-FROM debian
+ARG BASE_IMAGE=ekidd/rust-musl-builder:latest
 
-RUN apt update
-RUN apt install libssl1.1 openssl ca-certificates
+FROM ${BASE_IMAGE} AS builder
 
-ADD target/release/rollux /bin/.
+ADD --chown=rust:rust . ./
 
-RUN mkdir /app/
+RUN cargo build --release
 
-WORKDIR /app/
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+COPY --from=builder /home/rust/src/target/x86_64-unknown-linux-musl/release/rollux /usr/local/bin/
 
 ENV DISCORD_TOKEN="invalid"
 
-CMD '/bin/rollux'
+CMD /usr/local/bin/rollux
