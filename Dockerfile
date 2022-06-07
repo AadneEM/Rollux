@@ -1,6 +1,8 @@
-ARG BASE_IMAGE=ekidd/rust-musl-builder:latest
+ARG BASE_IMAGE=docker.io/ekidd/rust-musl-builder:latest
 
 FROM ${BASE_IMAGE} AS builder
+
+RUN sudo apt-get update && sudo apt-get install -y clang 
 
 ADD --chown=rust:rust . ./
 
