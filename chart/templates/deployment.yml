@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - image: {{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}
+          name: leetbot
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-token
+            - configMapRef:
+                name: {{ .Release.Name }}-cm
+          {{- if .Values.storage.enabled }}
+          volumeMounts:
+            - name: app-data
+              mountPath: '/app'
+              readOnly: false
+          {{- end }}
+      volumes:
+        {{- if .Values.storage.enabled }}
+        - name: app-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
+        {{- end }}

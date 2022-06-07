@@ -1,0 +1,10 @@
+image:
+  repository: registry.local/mollux/rollux
+
+app:
+  token: blabla
+  tz: Europe/Oslo
+
+storage:
+  enabled: false
+  storageClass: local-path
