@@ -1,0 +1,21 @@
+kind: pipeline
+type: kubernetes
+name: default
+
+clone:
+  skip_verify: true
+
+steps:
+  - name: build
+    image: rust:latest
+    commands:
+      - cargo build --release
+
+  - name: package
+    image: plugins/docker:latest
+    settings:
+      repo: registry.local/mollux/rollux
+      registry: registry.local
+      insecure: true
+      dockerfile: Dockerfile
+      tags: latest
